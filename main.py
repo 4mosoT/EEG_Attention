@@ -1,4 +1,3 @@
-from typing_extensions import Required
 from scipy import signal
 import os
 import matplotlib.pyplot as plt
@@ -29,7 +28,7 @@ if __name__ == "__main__":
     parser.add_argument('-bs', '--batch_size', type=int,
                         default=1, help="batch size")
     parser.add_argument('-ep', '--epochs', type=int, default=1, help="epochs")
-
+    parser.add_argument('-cm', '--comment', type=str, default="", help="comment")
     args = parser.parse_args()
 
     data_path = args.path
@@ -46,7 +45,7 @@ if __name__ == "__main__":
     batch, labels, _ = generator.__next__()
     _, EEGChannels, EEGSamples = batch.shape
 
-    writer = SummaryWriter()
+    writer = SummaryWriter(comment=args.comment)
     kf = model_selection.StratifiedKFold(n_splits=5)
     # Ver si mejor dividir entre sujetos o a nivel de ventanas
     labels = np.append(
