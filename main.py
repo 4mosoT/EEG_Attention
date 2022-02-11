@@ -28,11 +28,15 @@ if __name__ == "__main__":
     parser.add_argument('-bs', '--batch_size', type=int,
                         default=1, help="batch size")
     parser.add_argument('-ep', '--epochs', type=int, default=1, help="epochs")
+    parser.add_argument('-c', '--cuda', type=int, default=0, help="cuda device")
+
     parser.add_argument('-cm', '--comment', type=str, default="", help="comment")
     args = parser.parse_args()
 
     data_path = args.path
     stim = args.stim
+
+    device = f"cuda:{args.cuda}"
 
     eeg_dlx = timeseries.EEGSeries(path=data_path + f"EEG_7_{stim}_RD.npy")
     eeg_ctrl = timeseries.EEGSeries(path=data_path + f"EEG_7_{stim}_C.npy")
@@ -55,9 +59,9 @@ if __name__ == "__main__":
 
     for fold, (train_index, test_index) in enumerate(kf.split(np.zeros(labels.shape), labels)):
 
-        net = nets.CompleteNet(EEGChannels, EEGSamples).to("cuda")
+        net = nets.CompleteNet(EEGChannels, EEGSamples).to(device)
         loss = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(
-            [1, weight]).to("cuda"))  # Pos weight balance
+            [1, weight]).to(device))  # Pos weight balance
         optimizer = Adam(net.parameters(), lr=0.001)
 
         trainEEG = timeseries.EEGSeries(data=eeg.data[train_index])
@@ -79,9 +83,9 @@ if __name__ == "__main__":
             #weight_vector = batch_labels[:, 1] * weight
 
             batch = torch.from_numpy(batch).type(torch.FloatTensor).unsqueeze(
-                1).to("cuda")  # Unsqueeze to add channel dimension
+                1).to(device)  # Unsqueeze to add channel dimension
             batch_loss = loss(net(batch)[0], torch.from_numpy(
-                batch_labels).to("cuda"))
+                batch_labels).to(device))
             batch_loss.backward()
             optimizer.step()
 
@@ -93,11 +97,11 @@ if __name__ == "__main__":
                         testEEG, window_size=args.window_size, labels=test_labels, epochs=1, return_subjects=True)
                     for subject_batch, test_labels, _ in test_generator:
                         subject_batch = torch.from_numpy(subject_batch).type(
-                            torch.FloatTensor).unsqueeze(1).to("cuda")
+                            torch.FloatTensor).unsqueeze(1).to(device)
 
                         lbls = np.vstack((1 - test_labels, test_labels)).T
                         test_loss = loss(net(subject_batch)[0], torch.from_numpy(
-                            lbls).to("cuda")).cpu().numpy()
+                            lbls).to(device)).cpu().numpy()
 
                         result = torch.sigmoid(
                             net(subject_batch)[0]).cpu().numpy().mean(axis=0)
