@@ -23,14 +23,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('path', type=str, help="path to data")
     parser.add_argument('stim', type=str, help="stim frequency")
-    parser.add_argument('-ws', '--window_size', type=int,
-                        default=1, help="window size")
+    parser.add_argument('-ws', '--window_size', type=float,
+                        default=1, help="window size in seconds")
+    parser.add_argument('-s', '--stride', type=float,
+                        default=None, help="stride size in seconds")
     parser.add_argument('-bs', '--batch_size', type=int,
                         default=1, help="batch size")
     parser.add_argument('-ep', '--epochs', type=int, default=1, help="epochs")
-    parser.add_argument('-c', '--cuda', type=int, default=0, help="cuda device")
+    parser.add_argument('-c', '--cuda', type=int,
+                        default=0, help="cuda device")
 
-    parser.add_argument('-cm', '--comment', type=str, default="", help="comment")
+    parser.add_argument('-cm', '--comment', type=str,
+                        default="", help="comment")
     args = parser.parse_args()
 
     data_path = args.path
@@ -49,8 +53,10 @@ if __name__ == "__main__":
     batch, labels, _ = generator.__next__()
     _, EEGChannels, EEGSamples = batch.shape
 
-    writer = SummaryWriter(comment=args.comment)
+    writer = SummaryWriter(comment=args.comment if args.comment !=
+                           "" else f" {args.stim}Hz_WindowSize_{args.window_size}_Stride_{args.stride}_Batch_size_{args.batch_size}_Epochs_{args.epochs}")
     kf = model_selection.StratifiedKFold(n_splits=5)
+    
     # Ver si mejor dividir entre sujetos o a nivel de ventanas
     labels = np.append(
         np.ones(eeg_dlx.data.shape[0]), np.zeros(eeg_ctrl.data.shape[0]))
@@ -71,7 +77,7 @@ if __name__ == "__main__":
         test_labels = labels[test_index]
 
         train_generator = utils.window_data_loader(
-            trainEEG, window_size=args.window_size, batch_size=args.batch_size, labels=train_labels, epochs=args.epochs, shuffle=True)
+            trainEEG, window_size=args.window_size, batch_size=args.batch_size, labels=train_labels, epochs=args.epochs, shuffle=True, stride=args.stride)
         losses = []
 
         for step, (batch, batch_labels, epoch) in enumerate(train_generator):
@@ -94,7 +100,7 @@ if __name__ == "__main__":
                     test_results = []
 
                     test_generator = utils.window_data_loader(
-                        testEEG, window_size=args.window_size, labels=test_labels, epochs=1, return_subjects=True)
+                        testEEG, window_size=args.window_size, labels=test_labels, epochs=1, return_subjects=True, stride=args.stride)
                     for subject_batch, test_labels, _ in test_generator:
                         subject_batch = torch.from_numpy(subject_batch).type(
                             torch.FloatTensor).unsqueeze(1).to(device)
