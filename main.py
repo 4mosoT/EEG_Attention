@@ -88,9 +88,9 @@ if __name__ == "__main__":
             #weight_vector = batch_labels[:, 1] * weight
 
             batch = torch.from_numpy(batch).type(torch.FloatTensor).unsqueeze(
-                1).to("cuda")  # Unsqueeze to add channel dimension
+                1).to(f"cuda:{args.cuda}")  # Unsqueeze to add channel dimension
             batch_loss = loss(net(batch)[0], torch.from_numpy(
-                batch_labels).to("cuda").unsqueeze(1))
+                batch_labels).to(f"cuda:{args.cuda}").unsqueeze(1))
             batch_loss.backward()
             optimizer.step()
 
@@ -102,9 +102,9 @@ if __name__ == "__main__":
                         testEEG, window_size=args.window_size, labels=test_labels, epochs=1, return_subjects=True, stride=args.stride)
                     for subject_batch, b_test_labels, _ in test_generator:
                         subject_batch = torch.from_numpy(subject_batch).type(
-                            torch.FloatTensor).unsqueeze(1).to("cuda")
+                            torch.FloatTensor).unsqueeze(1).to(f"cuda:{args.cuda}")
 
-                        test_loss = loss(net(subject_batch)[0], torch.from_numpy(b_test_labels).to("cuda").unsqueeze(1)).cpu().numpy()
+                        test_loss = loss(net(subject_batch)[0], torch.from_numpy(b_test_labels).to(f"cuda:{args.cuda}").unsqueeze(1)).cpu().numpy()
 
                         result = torch.sigmoid(
                             net(subject_batch)[0]).cpu().numpy()
