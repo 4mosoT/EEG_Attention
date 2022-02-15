@@ -80,7 +80,7 @@ class CompleteNet(nn.Module):
         self.spatial_net = SpatialNet(EEGchannels, EEGsamples)
         spatial_shapes = self.compute_spatial_shapes()
         self.attention_net = MultiHeadAttention(d_model=spatial_shapes[-1])
-        self.fc = nn.Linear(spatial_shapes[-2] * spatial_shapes[-1], 2)
+        self.fc = nn.Linear(spatial_shapes[-2] * spatial_shapes[-1], 1)
 
     def compute_spatial_shapes(self):
         test = torch.rand(1,1,self.EEGChannels,self.EEGSamples)

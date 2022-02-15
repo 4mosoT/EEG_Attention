@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
         net = nets.CompleteNet(EEGChannels, EEGSamples).to(device)
         loss = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(
-            [1, weight]).to(device))  # Pos weight balance
+            weight).to(device))  # Pos weight balance
         optimizer = Adam(net.parameters(), lr=0.001)
 
         trainEEG = timeseries.EEGSeries(data=eeg.data[train_index])
@@ -83,15 +83,14 @@ if __name__ == "__main__":
         for step, (batch, batch_labels, epoch) in enumerate(train_generator):
 
             optimizer.zero_grad()
-            batch_labels = np.vstack(
-                (1 - batch_labels, batch_labels)).T  # DLX = 0, CTRL = 1
-
+            # batch_labels = np.vstack(
+            #     (1 - batch_labels, batch_labels)).T  # DLX = 0, CTRL = 1
             #weight_vector = batch_labels[:, 1] * weight
 
             batch = torch.from_numpy(batch).type(torch.FloatTensor).unsqueeze(
-                1).to(device)  # Unsqueeze to add channel dimension
+                1).to("cuda")  # Unsqueeze to add channel dimension
             batch_loss = loss(net(batch)[0], torch.from_numpy(
-                batch_labels).to(device))
+                batch_labels).to("cuda").unsqueeze(1))
             batch_loss.backward()
             optimizer.step()
 
@@ -101,23 +100,23 @@ if __name__ == "__main__":
 
                     test_generator = utils.window_data_loader(
                         testEEG, window_size=args.window_size, labels=test_labels, epochs=1, return_subjects=True, stride=args.stride)
-                    for subject_batch, test_labels, _ in test_generator:
+                    for subject_batch, b_test_labels, _ in test_generator:
                         subject_batch = torch.from_numpy(subject_batch).type(
-                            torch.FloatTensor).unsqueeze(1).to(device)
+                            torch.FloatTensor).unsqueeze(1).to("cuda")
 
-                        lbls = np.vstack((1 - test_labels, test_labels)).T
-                        test_loss = loss(net(subject_batch)[0], torch.from_numpy(
-                            lbls).to(device)).cpu().numpy()
+                        test_loss = loss(net(subject_batch)[0], torch.from_numpy(b_test_labels).to("cuda").unsqueeze(1)).cpu().numpy()
 
                         result = torch.sigmoid(
-                            net(subject_batch)[0]).cpu().numpy().mean(axis=0)
-                        test_results.append((test_labels[0], np.argmax(
-                            result, axis=0), np.mean(test_loss)))
+                            net(subject_batch)[0]).cpu().numpy()
+                        test_results.append((b_test_labels[0], np.mean(result), np.mean(test_loss)))
 
                     test_results = np.array(test_results)
-                    acc = metrics.accuracy_score(
-                        test_results[:, 1], test_results[:, 0])
+                    acc = metrics.accuracy_score(test_results[:,0], test_results[:,1] > 0.5)
+                    auc = metrics.roc_auc_score(test_results[:,0], test_results[:,1])
 
+                    
                     writer.add_scalars("Fold_{}".format(fold), {'train_loss': batch_loss.item(),
-                                                                'test_loss': test_results[:, -1].mean(),
+                                                                'test_loss': test_results[:,-1].mean(),
+                                                                'AUC': auc,
                                                                 'accuracy': acc}, epoch)
+
