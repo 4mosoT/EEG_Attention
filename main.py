@@ -45,7 +45,7 @@ if __name__ == "__main__":
     eeg_dlx = timeseries.EEGSeries(path=data_path + f"EEG_7_{stim}_RD.npy")
     eeg_ctrl = timeseries.EEGSeries(path=data_path + f"EEG_7_{stim}_C.npy")
     eeg = eeg_ctrl.append(eeg_dlx)
-    eeg.apply_cheby_filter(0.5, 80)
+    eeg = eeg.apply_cheby_filter(0.5, 80)
     eeg.data = preprocessing.StandardScaler().fit_transform(
         eeg.data.reshape(eeg.data.shape[1], -1)).reshape(eeg.data.shape)
 
