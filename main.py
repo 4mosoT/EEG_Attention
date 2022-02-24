@@ -35,6 +35,8 @@ if __name__ == "__main__":
 
     parser.add_argument('-cm', '--comment', type=str,
                         default="", help="comment")
+    parser.add_argument('-w', '--weight', action="store_true",
+                        default = False, help="whether to use weight class")
     args = parser.parse_args()
 
     data_path = args.path
@@ -56,12 +58,12 @@ if __name__ == "__main__":
     writer = SummaryWriter(comment=args.comment if args.comment !=
                            "" else f" {args.stim}Hz_WindowSize_{args.window_size}_Stride_{args.stride}_Batch_size_{args.batch_size}_Epochs_{args.epochs}")
     kf = model_selection.StratifiedKFold(n_splits=5)
-    
+
     # Ver si mejor dividir entre sujetos o a nivel de ventanas
     labels = np.append(
         np.ones(eeg_dlx.data.shape[0]), np.zeros(eeg_ctrl.data.shape[0]))
 
-    weight = eeg_ctrl.data.shape[0] / eeg_dlx.data.shape[0]
+    weight = eeg_ctrl.data.shape[0] / eeg_dlx.data.shape[0] if args.weight else 1
 
     for fold, (train_index, test_index) in enumerate(kf.split(np.zeros(labels.shape), labels)):
 
@@ -93,7 +95,6 @@ if __name__ == "__main__":
                 batch_labels).to(f"cuda:{args.cuda}").unsqueeze(1))
             batch_loss.backward()
             optimizer.step()
-
             if epoch is not None:
                 with torch.no_grad():
                     test_results = []
@@ -104,19 +105,21 @@ if __name__ == "__main__":
                         subject_batch = torch.from_numpy(subject_batch).type(
                             torch.FloatTensor).unsqueeze(1).to(f"cuda:{args.cuda}")
 
-                        test_loss = loss(net(subject_batch)[0], torch.from_numpy(b_test_labels).to(f"cuda:{args.cuda}").unsqueeze(1)).cpu().numpy()
+                        test_loss = loss(net(subject_batch)[0], torch.from_numpy(
+                            b_test_labels).to(f"cuda:{args.cuda}").unsqueeze(1)).cpu().numpy()
 
                         result = torch.sigmoid(
                             net(subject_batch)[0]).cpu().numpy()
-                        test_results.append((b_test_labels[0], np.mean(result), np.mean(test_loss)))
+                        test_results.append(
+                            (b_test_labels[0], np.mean(result), np.mean(test_loss)))
 
                     test_results = np.array(test_results)
-                    acc = metrics.accuracy_score(test_results[:,0], test_results[:,1] > 0.5)
-                    auc = metrics.roc_auc_score(test_results[:,0], test_results[:,1])
+                    acc = metrics.accuracy_score(
+                        test_results[:, 0], test_results[:, 1] > 0.5)
+                    auc = metrics.roc_auc_score(
+                        test_results[:, 0], test_results[:, 1])
 
-                    
                     writer.add_scalars("Fold_{}".format(fold), {'train_loss': batch_loss.item(),
-                                                                'test_loss': test_results[:,-1].mean(),
+                                                                'test_loss': test_results[:, -1].mean(),
                                                                 'AUC': auc,
                                                                 'accuracy': acc}, epoch)
-
