@@ -56,7 +56,7 @@ if __name__ == "__main__":
     _, EEGChannels, EEGSamples = batch.shape
 
     writer = SummaryWriter(comment=args.comment if args.comment !=
-                           "" else f" {args.stim}Hz_WindowSize_{args.window_size}_Stride_{args.stride}_Batch_size_{args.batch_size}_Epochs_{args.epochs}")
+                           "" else f" {args.stim}Hz_WindowSize_{args.window_size}_Stride_{args.stride}_Batch_size_{args.batch_size}_Epochs_{args.epochs}_Weight_{args.weight}")
     kf = model_selection.StratifiedKFold(n_splits=5)
 
     # Ver si mejor dividir entre sujetos o a nivel de ventanas
