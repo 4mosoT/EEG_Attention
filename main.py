@@ -63,7 +63,7 @@ if __name__ == "__main__":
     labels = np.append(
         np.ones(eeg_dlx.data.shape[0]), np.zeros(eeg_ctrl.data.shape[0]))
 
-    weight = eeg_ctrl.data.shape[0] / eeg_dlx.data.shape[0] if args.weight else 1
+    weight = (eeg_ctrl.data.shape[0] / eeg_dlx.data.shape[0]) if args.weight else 1
 
     for fold, (train_index, test_index) in enumerate(kf.split(np.zeros(labels.shape), labels)):
 
